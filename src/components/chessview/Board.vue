@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref} from "vue";
+import {ref, watch} from "vue";
 import Pawn from "@/components/chessview/Pawn.vue";
 import {logValInfo} from "@/assets/LogUtil"
 
@@ -20,6 +20,23 @@ const endPos = ref();
 const startP = ref<number>(-1);
 const endP = ref<number>(-1);
 const isMyTurn = ref<boolean>(false);
+const trap = ref<Array<number>>([3, 5, 11, 53, 59, 61]);
+const trapOther = ref<Array<number>>([3, 5, 11]);
+const trapSelf = ref<Array<number>>([53, 59, 61]);
+const trigger = ref<Array<number>>([])
+
+watch(trigger, (nv, ov) => {
+  console.log(nv)
+  for (let i = 0; i < nv.length; i++) {
+    chessPos.value[nv[i] - 1]?.style.setProperty("--bg", 'url("src/assets/pawn_img/trap_trigger.svg")');
+    console.log("该陷阱已触发")
+  }
+}, {
+  deep: true,
+});
+
+// TODO 根据数据渲染对方棋子
+
 
 // 渲染棋子
 function isChess(n: number): boolean {
@@ -144,21 +161,46 @@ function updatePos(): void {
   isMyTurn.value = !isMyTurn.value;
 }
 
+// 陷阱判断
+function trapTrigger(targetChess: HTMLElement): boolean {
+
+  let endPos = endP.value;
+  if (targetChess.classList.contains("self")) {
+    let isTrapped = trapOther.value.includes(endPos);
+    if (isTrapped) {
+      trigger.value = trap.value.filter(item => item == endPos);
+      trapOther.value[trapOther.value.indexOf(endPos)] = -1;
+    }
+    return isTrapped;
+  } else if (targetChess.classList.contains("other")) {
+    let isTrapped = trapOther.value.includes(endPos);
+    if (isTrapped) {
+      trigger.value = trap.value.filter(item => item == endPos);
+      trapSelf.value[trapSelf.value.indexOf(endPos)] = -1;
+    }
+
+    return isTrapped
+  }
+
+  return false;
+}
+
 // 吃掉对方
 function eatOpponent(): boolean {
   console.log("eat start")
-  const trap = [3, 5, 11, 53, 59, 61];
   // 3、5、11、53、59、61
-  // 判断对方是否在陷阱中
-  if (trap.includes(endP.value)) {
-    chessPos.value[endP.value - 1].firstChild?.remove();
-    return true;
-  }
 
   let self = chessPos.value[startP.value - 1].firstChild;
   let opponent = chessPos.value[endP.value - 1].firstChild;
 
-  // logValInfo("下一步", chessPos.value[endP.value - 1])
+  //判断落点是否有棋子
+  if (opponent == null || !opponent.style)
+    return true;
+  //在判断是否是自己人
+  if (checkIsSelf(opponent)) {
+    console.log("不能吃掉己方的棋子")
+    return false;
+  }
 
   let canEat: boolean = compareRank(self, opponent);
   if (canEat) {
@@ -178,6 +220,11 @@ function moveCorrectly(ele: HTMLElement): boolean {
       || ele.classList.contains("self") && endP.value == 60) {
     return false;
   }
+
+  //落入陷阱的不能在动了
+  if (ele.classList.contains("self") && trapOther.value.includes(startP.value)
+      || ele.classList.contains("other") && trapSelf.value.includes(startP.value))
+    return false;
 
   //23, 24, 26, 27, 30, 31, 33, 34, 37, 38, 40, 41
   if (!ele.classList.contains("pawn0") && river.includes(endP.value))
@@ -248,19 +295,15 @@ function jumpOverRiver(direction: number) {
 function compareRank(self: HTMLElement, opponent: HTMLElement | null): boolean {
   console.log("判断是否能吃掉对方")
 
-  if (opponent == null || !opponent.style)
-    return true;
-
-  if (checkIsSelf(opponent)) {
-    console.log("不能吃掉己方的棋子")
-    return false;
-  }
-
   let selfR: string = self.classList[1].charAt(4);
   let opponentR: string = opponent?.classList[1].charAt(4);
-
-  return ((selfR >= opponentR || Number(selfR) - Number(opponentR) == -7)
+  let canEat = ((selfR >= opponentR || Number(selfR) - Number(opponentR) == -7)
       && Number(selfR) - Number(opponentR) != 7);
+
+  let isTrapped = trapTrigger(opponent);
+  logValInfo("是否在陷阱中", isTrapped)
+
+  return canEat || isTrapped;
 }
 
 //判断待吃的棋子是否是己方的棋子
@@ -282,7 +325,6 @@ function log() {
   console.log("end pos " + endP.value)
   console.log("----- cur info -----")
 }
-
 
 //初始化状态
 function initState(): void {
@@ -384,7 +426,8 @@ function initState(): void {
 .chessPos:nth-child(53),
 .chessPos:nth-child(59),
 .chessPos:nth-child(61) {
-  background: url("src/assets/pawn_img/trap.svg") center;
+  --bg: url("src/assets/pawn_img/trap.svg");
+  background: var(--bg);
   background-size: cover;
   margin: 1px 1px;
 }
