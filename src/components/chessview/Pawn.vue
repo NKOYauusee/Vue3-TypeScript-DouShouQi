@@ -18,8 +18,8 @@ const pawn = ref<HTMLElement | Element>()
   position: relative;
   width: 85%;
   height: 85%;
-  background: #bbbbbb;
-  background-position: center;
+  background: #bbbbbb center;
+  border: 1px solid black;
   background-size: cover;
   box-sizing: border-box;
   border-radius: 50%;
@@ -37,11 +37,11 @@ const pawn = ref<HTMLElement | Element>()
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 210%;
-  height: 210%;
+  width: 150%;
+  height: 150%;
   box-sizing: border-box;
   background: url("src/assets/pawn_img/choose.svg");
-  background-size: cover;
+  background-size: 100%;
   visibility: var(--show);
 }
 

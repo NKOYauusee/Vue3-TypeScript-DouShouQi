@@ -63,13 +63,13 @@ function startSelect(n: number) {
     }
     // 选择落点
     if (isSelect.value) {
-      log()
       console.log("选择落点")
       if (endPos.value != undefined)
         endPos.value.style.setProperty("--s", "hidden");
 
       endP.value = n
       endPos.value = target;
+
       endPos.value.style.setProperty("--s", "visible")
 
       updatePos();
@@ -80,10 +80,6 @@ function startSelect(n: number) {
 }
 
 function selectChess(chess: HTMLElement) {
-  //判断是否己方
-  // if (!chess.classList.contains("self")) {
-  //   return;
-  // }
 
   const isShow = chess.style.getPropertyValue("--show");
   //选中
@@ -138,8 +134,10 @@ function updatePos(): void {
   console.log("吃的掉对方")
   endPos.value.insertBefore(selectedChess.value, endPos.value.firstChild);
 
-  if (isSuccess())
+  if (isSuccess()) {
     console.log("win")
+    location.reload()
+  }
 
   cancelSelected();
   console.log("结束落点")
@@ -153,7 +151,7 @@ function eatOpponent(): boolean {
   // 3、5、11、53、59、61
   // 判断对方是否在陷阱中
   if (trap.includes(endP.value)) {
-    chessPos.value[endP.value - 1].firstChild.remove();
+    chessPos.value[endP.value - 1].firstChild?.remove();
     return true;
   }
 
@@ -176,8 +174,13 @@ function moveCorrectly(ele: HTMLElement): boolean {
   console.log("start: " + startP.value)
   console.log("end: " + endP.value)
 
+  if (ele.classList.contains("other") && endP.value == 4
+      || ele.classList.contains("self") && endP.value == 60) {
+    return false;
+  }
+
   //23, 24, 26, 27, 30, 31, 33, 34, 37, 38, 40, 41
-  if (!ele.classList.contains("pawn0") && river.includes(endP.value) || den.includes(endP.value))
+  if (!ele.classList.contains("pawn0") && river.includes(endP.value))
     return false;
 
   let move = endP.value - startP.value;
@@ -262,7 +265,7 @@ function compareRank(self: HTMLElement, opponent: HTMLElement | null): boolean {
 
 //判断待吃的棋子是否是己方的棋子
 function checkIsSelf(ele: HTMLElement): boolean {
-  if (!ele.style)
+  if (!ele?.style)
     return false;
   return ele.classList.contains("self") && selectedChess.value?.classList.contains("self")
       || ele.classList.contains("other") && selectedChess.value?.classList.contains("other");
@@ -346,8 +349,8 @@ function initState(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 140%;
-  height: 140%;
+  width: 130%;
+  height: 130%;
   box-sizing: border-box;
   background: url("src/assets/pawn_img/done.svg");
   background-size: cover;
