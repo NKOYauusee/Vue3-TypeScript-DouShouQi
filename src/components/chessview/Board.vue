@@ -16,17 +16,19 @@ const canJumpPos1 = [16, 17, 19, 20];   //可以越河的位置
 const canJumpPos2 = [44, 45, 47, 48];   //可以越河的位置
 const chessPos = ref() //所有格子
 const isSelect = ref<boolean>(false)
-const selectedChess = ref<HTMLElement>();
-const endPos = ref();
-const startP = ref<number>(-1);
-const endP = ref<number>(-1);
-const isMyTurn = ref<boolean>(false);
+const selectedChess = ref<HTMLElement>(); //待移动的棋子
+const endPos = ref();                 //目标位置
+const startP = ref<number>(-1); //起始位置编号
+const endP = ref<number>(-1);   //目标位置起始位置编号
 const trap = ref<Array<number>>([3, 5, 11, 53, 59, 61]);
 const trapOther = ref<Array<number>>([3, 5, 11]);
 const trapSelf = ref<Array<number>>([53, 59, 61]);
 const trigger = ref<Array<number>>([])
 
-watch(trigger, (nv, ov) => {
+const firstMove = ref<"self" | "other">("self");  // 默认己方先手
+const moveStart = ref<boolean>(false);
+
+watch(trigger, (nv) => {
   console.log(nv)
   for (let i = 0; i < nv.length; i++) {
     chessPos.value[nv[i] - 1]?.style.setProperty("--bg", 'url("src/assets/pawn_img/trap_trigger.svg")');
@@ -38,6 +40,11 @@ watch(trigger, (nv, ov) => {
 
 // TODO 根据数据渲染对方棋子
 
+// TODO 显示可移动的地方
+
+// TODO 添加轮次操作
+
+// TODO 添加落点判断
 
 // 渲染棋子
 function isChess(n: number): boolean {
@@ -58,25 +65,32 @@ function getPawnClassName(n: number): string {
   return res;
 }
 
+// 渲染各方棋子对应的样式
+function isSelf(n: number) {
+  return self.includes(n)
+}
+
 //选择棋子
 function startSelect(n: number) {
-  console.log("start select")
-  console.log(n)
-
   let target: HTMLElement | Element = chessPos.value[n - 1];
   let chess: any = target.childNodes[0];
 
-  logValInfo("格子：", target.childNodes);
+  console.log("当前选择的位置编号：" + n);
+  logValInfo("当前选择的格子：", target.childNodes);
+
+  // return;
   //如果位置存在棋子
   if (target.childNodes.length != 0 && chess.style && !isSelect.value) {
-    console.log("选择目标棋子")
+    console.log("开始选择待移动的棋子")
     //记录初始位置
     startP.value = n;
     selectChess(chess)
-  } else {
+  }
+  //如果该位置不存在棋子
+  else {
     if (n == startP.value) {
       cancelSelected();
-      console.log("取消落点")
+      console.log("取消当前选择")
       return;
     }
     // 选择落点
@@ -84,20 +98,29 @@ function startSelect(n: number) {
       console.log("选择落点")
       if (endPos.value != undefined)
         endPos.value.style.setProperty("--s", "hidden");
-
       endP.value = n
       endPos.value = target;
-
       endPos.value.style.setProperty("--s", "visible")
 
       updatePos();
     }
   }
-
-  console.log("end select")
+  console.log("结束\n");
 }
 
+// 选择目标的判断
 function selectChess(chess: HTMLElement) {
+  if (!chess.classList.contains(firstMove.value)) {
+    let info: string;
+    if (firstMove.value == "other")
+      info = "红方"
+    else
+      info = "蓝方"
+
+    msgNotice(info + "先走，请选择该方棋子", "error")
+    cancelSelected();
+    return;
+  }
 
   const isShow = chess.style.getPropertyValue("--show");
   //选中
@@ -105,7 +128,6 @@ function selectChess(chess: HTMLElement) {
     cancelSelected()
     chess.style.setProperty("--show", "visible")
     selectedChess.value = chess;
-
     isSelect.value = true;
     if (endPos.value != undefined)
       endPos.value.style.setProperty("--s", "hidden");
@@ -116,27 +138,23 @@ function selectChess(chess: HTMLElement) {
 
 //取消选择目标棋子
 function cancelSelected(): void {
-  let self = document.querySelectorAll(".self");
+  console.log("操作结束，并等待下一步操作")
+  let self = document.querySelectorAll("." + firstMove.value);
   self.forEach((e: HTMLElement) => {
     e.style.setProperty("--show", "hidden")
   })
 
-  let other = document.querySelectorAll(".other");
-  other.forEach((e: HTMLElement) => {
-    e.style.setProperty("--show", "hidden")
-  })
+  // let other = document.querySelectorAll(".other");
+  // other.forEach((e: HTMLElement) => {
+  //   e.style.setProperty("--show", "hidden")
+  // })
 
   initState();
 }
 
-// 己方的棋子
-function isSelf(n: number) {
-  return self.includes(n)
-}
-
 //改变棋子位置
 function updatePos(): void {
-  console.log("updatePos start");
+  console.log("开始更新棋子位置");
 
   if (!moveCorrectly(selectedChess.value)) {
     console.log("落点不符合规则")
@@ -147,23 +165,21 @@ function updatePos(): void {
 
   // 吃掉对方
   if (!eatOpponent()) {
+    console.log("吃不掉对方棋子")
     cancelSelected();
     return;
   }
-
-  console.log("吃的掉对方")
+  console.log("吃得掉对方棋子")
   endPos.value.insertBefore(selectedChess.value, endPos.value.firstChild);
-
   if (isSuccess()) {
-    console.log("win")
+    console.log(" >>> win <<< ")
     setTimeout(() => {
       location.reload()
     }, 1500)
   }
-
   cancelSelected();
-  console.log("结束落点")
-  isMyTurn.value = !isMyTurn.value;
+  console.log("该棋子操作结束")
+  updateMove();
 }
 
 // 陷阱判断
@@ -216,20 +232,21 @@ function eatOpponent(): boolean {
   return canEat;
 }
 
-// 移动一格的逻辑
+// 移动逻辑
 function moveCorrectly(ele: HTMLElement): boolean {
-  console.log("start: " + startP.value)
-  console.log("end: " + endP.value)
-
+  // console.log("start: " + startP.value)
+  // console.log("end: " + endP.value)
+  console.log("移动判断")
   if (ele.classList.contains("other") && endP.value == 4
       || ele.classList.contains("self") && endP.value == 60) {
+    console.log("己方棋子不能走进自家兽穴")
     return false;
   }
 
   //落入陷阱的不能在动了
   if (ele.classList.contains("self") && trapOther.value.includes(startP.value)
-      || ele.classList.contains("other") && trapSelf.value.includes(startP.value)){
-    msgNotice("该棋子落进陷阱当中，不能移动")
+      || ele.classList.contains("other") && trapSelf.value.includes(startP.value)) {
+    msgNotice("该棋子落进陷阱当中，禁止移动")
     return false;
   }
 
@@ -240,21 +257,14 @@ function moveCorrectly(ele: HTMLElement): boolean {
   let move = endP.value - startP.value;
   //判断是否能过河
   if (canJumpOverRiver(ele)) {
+    console.log("该棋能够越河")
     return jumpOverRiver(move);
   }
 
   return move == 1 || move == -1 || move == 7 || move == -7;
 }
 
-// TODO 显示可移动的地方
-
-// TODO 添加轮次操作
-
-// TODO 添加落点判断
-
-// TODO 根据WS传回数据更新对方的棋子信息
-
-// 获胜
+// 判断是否获胜
 function isSuccess(): boolean {
   let other = document.querySelectorAll(".other");
   if (other.length == 0) {
@@ -264,7 +274,7 @@ function isSuccess(): boolean {
   }
 
   let self = document.querySelectorAll(".self");
-  if (other.length == 0) {
+  if (self.length == 0) {
     console.log("other win")
     msgNotice("Congrats!!! RED WIN")
     return true;
@@ -273,8 +283,13 @@ function isSuccess(): boolean {
   return den.includes(endP.value);
 }
 
-function msgNotice(info: string): void {
-  ElMessage.success(info);
+// 消息提示
+function msgNotice(info: string, type: "success" | "error" | "warning" = 'success'): void {
+  ElMessage({
+    message: info,
+    type: type,
+    plain: true,
+  })
 }
 
 // 过河
@@ -284,7 +299,7 @@ function canJumpOverRiver(ele: HTMLElement): boolean {
 
 // 判断是否有老鼠在河道上挡住路线
 function checkIsRatBlocked(startPos: number, endPos: number): number {
-  console.log("checkIsRatBlocked")
+  console.log("判断是否有老鼠阻挡")
   let min = Math.min(startPos, endPos);
   let max = Math.max(startPos, endPos);
   let i = min + 7
@@ -301,7 +316,7 @@ function checkIsRatBlocked(startPos: number, endPos: number): number {
 
 // 开始越河
 function jumpOverRiver(direction: number) {
-  console.log("越河")
+  console.log("开始越河")
   let startPos = startP.value;
   if (canJumpPos1.includes(startPos)) {
     return direction == checkIsRatBlocked(startPos, endP.value) || direction == 1 || direction == -1 || direction == -7;
@@ -315,7 +330,6 @@ function jumpOverRiver(direction: number) {
 // 获取等级 比较谁能吃谁
 function compareRank(self: HTMLElement, opponent: HTMLElement | null): boolean {
   console.log("判断是否能吃掉对方")
-
   let selfR: string = self.classList[1].charAt(4);
   let opponentR: string = opponent?.classList[1].charAt(4);
   let canEat = ((selfR >= opponentR || Number(selfR) - Number(opponentR) == -7)
@@ -323,7 +337,6 @@ function compareRank(self: HTMLElement, opponent: HTMLElement | null): boolean {
 
   let isTrapped = trapTrigger(opponent);
   logValInfo("是否在陷阱中", isTrapped)
-
   return canEat || isTrapped;
 }
 
@@ -331,20 +344,21 @@ function compareRank(self: HTMLElement, opponent: HTMLElement | null): boolean {
 function checkIsSelf(ele: HTMLElement): boolean {
   if (!ele?.style)
     return false;
-  return ele.classList.contains("self") && selectedChess.value?.classList.contains("self")
-      || ele.classList.contains("other") && selectedChess.value?.classList.contains("other");
+
+  // return ele.classList.contains("self") && selectedChess.value?.classList.contains("self")
+  //     || ele.classList.contains("other") && selectedChess.value?.classList.contains("other");
+
+  return ele.classList.contains(firstMove.value)
+      && selectedChess.value?.classList.contains("self")
 }
 
-function log() {
-  console.log("----- cur info -----")
-  console.log("selectedChess")
-  console.log(selectedChess.value)
-  console.log("endPos")
-  console.log(endPos.value)
-  console.log(isSelect.value)
-  console.log("start pos " + startP.value)
-  console.log("end pos " + endP.value)
-  console.log("----- cur info -----")
+// 转换选择
+function updateMove() {
+  moveStart.value = false;
+  if (firstMove.value == "other")
+    firstMove.value = "self"
+  else
+    firstMove.value = "other"
 }
 
 //初始化状态
@@ -391,7 +405,7 @@ function initState(): void {
   grid-template-rows: repeat(9, 1fr);
   /* 创建 7行 */
   grid-template-columns: repeat(7, 1fr);
-  grid-gap: 0.8px;
+  grid-gap: 1px;
   padding: 2px 2px;
 }
 
