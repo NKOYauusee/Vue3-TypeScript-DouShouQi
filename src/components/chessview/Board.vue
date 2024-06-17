@@ -108,16 +108,20 @@ function startSelect(n: number) {
   console.log("结束\n");
 }
 
+function getCampName(): string {
+  let info: string;
+  if (firstMove.value == "other")
+    info = "红方"
+  else
+    info = "蓝方"
+
+  return info;
+}
+
 // 选择目标的判断
 function selectChess(chess: HTMLElement) {
   if (!chess.classList.contains(firstMove.value)) {
-    let info: string;
-    if (firstMove.value == "other")
-      info = "红方"
-    else
-      info = "蓝方"
-
-    msgNotice(info + "先走，请选择该方棋子", "error")
+    msgNotice(getCampName() + "先走，请选择该方棋子", "error")
     cancelSelected();
     return;
   }
@@ -158,7 +162,7 @@ function updatePos(): void {
 
   if (!moveCorrectly(selectedChess.value)) {
     console.log("落点不符合规则")
-    msgNotice("落点不符合规则")
+    msgNotice("落点不符合规则", "warning")
     cancelSelected();
     return;
   }
@@ -166,13 +170,15 @@ function updatePos(): void {
   // 吃掉对方
   if (!eatOpponent()) {
     console.log("吃不掉对方棋子")
+    msgNotice("当前棋子吃不掉对方棋子", "error")
     cancelSelected();
     return;
   }
   console.log("吃得掉对方棋子")
   endPos.value.insertBefore(selectedChess.value, endPos.value.firstChild);
   if (isSuccess()) {
-    console.log(" >>> win <<< ")
+    console.log(" >>> " + getCampName() + " win <<< ")
+    msgNotice(" >>>" + getCampName() + " 获胜! <<<")
     setTimeout(() => {
       location.reload()
     }, 1500)
@@ -192,9 +198,10 @@ function trapTrigger(targetChess: HTMLElement): boolean {
       trigger.value = trap.value.filter(item => item == endPos);
       trapOther.value[trapOther.value.indexOf(endPos)] = -1;
     }
+
     return isTrapped;
   } else if (targetChess.classList.contains("other")) {
-    let isTrapped = trapOther.value.includes(endPos);
+    let isTrapped = trapSelf.value.includes(endPos);
     if (isTrapped) {
       trigger.value = trap.value.filter(item => item == endPos);
       trapSelf.value[trapSelf.value.indexOf(endPos)] = -1;
@@ -246,7 +253,7 @@ function moveCorrectly(ele: HTMLElement): boolean {
   //落入陷阱的不能在动了
   if (ele.classList.contains("self") && trapOther.value.includes(startP.value)
       || ele.classList.contains("other") && trapSelf.value.includes(startP.value)) {
-    msgNotice("该棋子落进陷阱当中，禁止移动")
+    msgNotice("该棋子落进陷阱当中，禁止移动", "error")
     return false;
   }
 
@@ -289,6 +296,7 @@ function msgNotice(info: string, type: "success" | "error" | "warning" = 'succes
     message: info,
     type: type,
     plain: true,
+    duration: 1500,
   })
 }
 
