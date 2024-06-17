@@ -2,6 +2,7 @@
 import {ref, watch} from "vue";
 import Pawn from "@/components/chessview/Pawn.vue";
 import {logValInfo} from "@/assets/LogUtil"
+import {ElMessage} from "element-plus";
 
 // 棋盘
 const board = ref<HTMLElement | Element>();
@@ -139,6 +140,8 @@ function updatePos(): void {
 
   if (!moveCorrectly(selectedChess.value)) {
     console.log("落点不符合规则")
+    msgNotice("落点不符合规则")
+    cancelSelected();
     return;
   }
 
@@ -153,7 +156,9 @@ function updatePos(): void {
 
   if (isSuccess()) {
     console.log("win")
-    location.reload()
+    setTimeout(() => {
+      location.reload()
+    }, 1500)
   }
 
   cancelSelected();
@@ -199,6 +204,7 @@ function eatOpponent(): boolean {
   //在判断是否是自己人
   if (checkIsSelf(opponent)) {
     console.log("不能吃掉己方的棋子")
+    msgNotice("不能吃掉己方的棋子");
     return false;
   }
 
@@ -207,7 +213,6 @@ function eatOpponent(): boolean {
     opponent?.remove();
   }
 
-  console.log("吃不掉")
   return canEat;
 }
 
@@ -223,8 +228,10 @@ function moveCorrectly(ele: HTMLElement): boolean {
 
   //落入陷阱的不能在动了
   if (ele.classList.contains("self") && trapOther.value.includes(startP.value)
-      || ele.classList.contains("other") && trapSelf.value.includes(startP.value))
+      || ele.classList.contains("other") && trapSelf.value.includes(startP.value)){
+    msgNotice("该棋子落进陷阱当中，不能移动")
     return false;
+  }
 
   //23, 24, 26, 27, 30, 31, 33, 34, 37, 38, 40, 41
   if (!ele.classList.contains("pawn0") && river.includes(endP.value))
@@ -250,10 +257,24 @@ function moveCorrectly(ele: HTMLElement): boolean {
 // 获胜
 function isSuccess(): boolean {
   let other = document.querySelectorAll(".other");
-  if (other.length == 0)
+  if (other.length == 0) {
+    console.log("self win")
+    msgNotice("Congrats!!! BLUE WIN")
     return true;
+  }
+
+  let self = document.querySelectorAll(".self");
+  if (other.length == 0) {
+    console.log("other win")
+    msgNotice("Congrats!!! RED WIN")
+    return true;
+  }
 
   return den.includes(endP.value);
+}
+
+function msgNotice(info: string): void {
+  ElMessage.success(info);
 }
 
 // 过河
