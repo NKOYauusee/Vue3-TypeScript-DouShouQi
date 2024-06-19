@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, watch} from "vue";
+import {onMounted, ref, watch} from "vue";
 import Pawn from "@/components/chessview/Pawn.vue";
 import {logValInfo} from "@/assets/LogUtil"
 import {ElMessage} from "element-plus";
@@ -38,13 +38,15 @@ watch(trigger, (nv) => {
   deep: true,
 });
 
+onMounted(() => {
+
+})
+
+
 // TODO 根据数据渲染对方棋子
+// 所需参数 棋子初始位置和目标位置 然后 startSelect(startP) 再 startSelect(endP)
 
-// TODO 显示可移动的地方
-
-// TODO 添加轮次操作
-
-// TODO 添加落点判断
+// TODO 开始选择时显示可移动的地方
 
 // 渲染棋子
 function isChess(n: number): boolean {
